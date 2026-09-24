@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Donation = require('../models/Donation');
 const Match = require('../models/Match');
 const User = require('../models/User');
@@ -28,6 +29,8 @@ const getReviewQueue = async (req, res) => {
       success: true,
       count: reviewQueue.length,
       matches: reviewQueue,
+      reviewQueue,
+      data: reviewQueue,
     });
   } catch (error) {
     console.error('Error in getReviewQueue:', error);
@@ -53,6 +56,18 @@ const approveReviewQueueMatch = async (req, res) => {
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(matchId)) {
+      return res.status(404).json({
+        message: 'Match not found.',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(rescuerId)) {
+      return res.status(400).json({
+        message: 'Invalid rescuer ID format.',
+      });
+    }
+
     const match = await Match.findById(matchId);
     if (!match) {
       return res.status(404).json({
@@ -73,7 +88,9 @@ const approveReviewQueueMatch = async (req, res) => {
     await match.save();
 
     // Update donation status to matched
-    await Donation.findByIdAndUpdate(match.donation, { status: 'matched' });
+    if (match.donation) {
+      await Donation.findByIdAndUpdate(match.donation._id || match.donation, { status: 'matched' });
+    }
 
     const updatedMatch = await Match.findById(matchId)
       .populate({
@@ -86,6 +103,7 @@ const approveReviewQueueMatch = async (req, res) => {
       success: true,
       message: 'Match approved and rescuer assigned successfully.',
       match: updatedMatch,
+      data: updatedMatch,
     });
   } catch (error) {
     console.error('Error in approveReviewQueueMatch:', error);
@@ -102,7 +120,13 @@ const approveReviewQueueMatch = async (req, res) => {
  */
 const getStats = async (req, res) => {
   try {
-    const [totalDonations, totalMatches, completedDeliveries, divertedAgg] = await Promise.all([
+    const [
+      totalDonations,
+      totalMatches,
+      completedDeliveries,
+      divertedDonationsAgg,
+      divertedMatchesAgg,
+    ] = await Promise.all([
       Donation.countDocuments(),
       Match.countDocuments(),
       Match.countDocuments({ status: 'delivered' }),
@@ -110,14 +134,31 @@ const getStats = async (req, res) => {
         { $match: { status: 'delivered' } },
         { $group: { _id: null, totalQuantity: { $sum: '$quantity' } } },
       ]),
+      Match.aggregate([
+        { $match: { status: 'delivered' } },
+        {
+          $lookup: {
+            from: 'donations',
+            localField: 'donation',
+            foreignField: '_id',
+            as: 'donationDoc',
+          },
+        },
+        { $unwind: '$donationDoc' },
+        { $group: { _id: null, totalQuantity: { $sum: '$donationDoc.quantity' } } },
+      ]),
     ]);
 
-    const totalQuantityDiverted = divertedAgg[0]?.totalQuantity || 0;
+    const totalQuantityDiverted = Math.max(
+      divertedDonationsAgg[0]?.totalQuantity || 0,
+      divertedMatchesAgg[0]?.totalQuantity || 0
+    );
 
-    // Last 14 days breakdown
-    const fourteenDaysAgo = new Date();
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13);
-    fourteenDaysAgo.setHours(0, 0, 0, 0);
+    // Last 14 days breakdown (UTC-aligned to match MongoDB date strings)
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const fourteenDaysAgo = new Date(todayUTC);
+    fourteenDaysAgo.setUTCDate(fourteenDaysAgo.getUTCDate() - 13);
 
     const [donationsDaily, deliveriesDaily] = await Promise.all([
       Donation.aggregate([
@@ -152,7 +193,7 @@ const getStats = async (req, res) => {
     const breakdownByDay = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(fourteenDaysAgo);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(d.getUTCDate() + i);
       const dateStr = d.toISOString().split('T')[0];
 
       const don = donationsDaily.find((item) => item._id === dateStr);
@@ -160,14 +201,23 @@ const getStats = async (req, res) => {
 
       breakdownByDay.push({
         date: dateStr,
+        day: dateStr,
         donationsCount: don ? don.count : 0,
+        donations: don ? don.count : 0,
         quantityDiverted: don ? don.quantity : 0,
+        quantity: don ? don.quantity : 0,
         deliveriesCount: del ? del.count : 0,
+        deliveries: del ? del.count : 0,
       });
     }
 
     res.status(200).json({
       success: true,
+      totalDonations,
+      totalMatches,
+      completedDeliveries,
+      totalQuantityDiverted,
+      breakdownByDay,
       stats: {
         totalDonations,
         totalMatches,
@@ -211,18 +261,25 @@ const getAllActivity = async (req, res) => {
       matchMap[m.donation.toString()] = m;
     });
 
-    const activity = donations.map((d) => ({
-      ...d.toObject(),
-      match: matchMap[d._id.toString()] || null,
-    }));
+    const activity = donations.map((d) => {
+      const match = matchMap[d._id.toString()] || null;
+      return {
+        ...d.toObject(),
+        match,
+        matchStatus: match ? match.status : null,
+      };
+    });
 
     res.status(200).json({
       success: true,
       total,
+      count: activity.length,
       page,
       totalPages: Math.ceil(total / limit) || 1,
       limit,
       data: activity,
+      donations: activity,
+      activity,
     });
   } catch (error) {
     console.error('Error in getAllActivity:', error);

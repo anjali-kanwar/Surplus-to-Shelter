@@ -6,6 +6,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const rescuerRoutes = require('./routes/rescuerRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -23,6 +25,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/rescuer', rescuerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/matches', deliveryRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
