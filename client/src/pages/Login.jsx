@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 import { setAuthSession, decodeToken, getRoleHomeRoute } from '../utils/auth';
 
 const Login = () => {
@@ -28,7 +28,7 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await api.post('/api/auth/login', {
         email: formData.email.trim(),
         password: formData.password,
       });

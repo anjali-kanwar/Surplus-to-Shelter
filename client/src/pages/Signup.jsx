@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 import { setAuthSession, decodeToken, getRoleHomeRoute } from '../utils/auth';
 
 const FOOD_TYPES = [
@@ -136,7 +136,7 @@ const Signup = () => {
         payload.pickupWindowEnd = formData.pickupWindowEnd;
       }
 
-      const response = await axios.post('/api/auth/register', payload);
+      const response = await api.post('/api/auth/register', payload);
       const { token, user } = response.data;
 
       if (!token) {

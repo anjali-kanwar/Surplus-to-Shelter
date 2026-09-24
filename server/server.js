@@ -28,10 +28,22 @@ app.use('/api/rescuer', rescuerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/matches', deliveryRoutes);
 
-// Base Route
-app.get('/', (req, res) => {
-  res.json({ message: 'Food Rescue App API is running' });
-});
+const path = require('path');
+const fs = require('fs');
+
+// Serve React client if dist exists (Single-service full-stack deployment on Render)
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(clientDistPath, 'index.html'));
+  });
+} else {
+  // Base Route fallback
+  app.get('/', (req, res) => {
+    res.json({ message: 'Food Rescue App API is running' });
+  });
+}
 
 const PORT = process.env.PORT || 5000;
 
