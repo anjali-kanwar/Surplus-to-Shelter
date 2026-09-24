@@ -1,0 +1,36 @@
+services:
+  # 1. Full-Stack Web App (React Client + Node.js Express API)
+  - type: web
+    name: surplus-to-shelter-web
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@foodrescue.org
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: surplus-to-shelter-ml
+          property: host
+
+  # 2. Python ML & Computer Vision Microservice
+  - type: web
+    name: surplus-to-shelter-ml
+    env: python
+    plan: free
+    rootDir: ml-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12

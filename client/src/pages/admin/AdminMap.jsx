@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { CardSkeleton } from '../../components/Skeleton';
 
 // Custom Map Marker HTML Icons
-const createRescuerRequestIcon = (urgency, status) => {
+const createRescuerRequestIcon = (urgency) => {
   const isUrgent = urgency === 'urgent';
   const pulseClass = isUrgent ? 'map-pulse-purple' : 'map-pulse-purple';
   const bgColor = isUrgent ? '#DC2626' : '#9333EA';
