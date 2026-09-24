@@ -1,6 +1,7 @@
 const Match = require('../models/Match');
 const User = require('../models/User');
 const Donation = require('../models/Donation');
+const FoodRequest = require('../models/FoodRequest');
 
 // Helper to generate 6-digit numeric OTP
 const generateOtp = () => {
@@ -189,8 +190,167 @@ const respondToMatch = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Rescuer applies for food supplies / shelter food request
+ * @route   POST /api/rescuer/food-requests
+ * @access  Private (Rescuer only)
+ */
+const createFoodRequest = async (req, res) => {
+  try {
+    const {
+      shelterName,
+      foodTypes,
+      minQuantity,
+      maxQuantity,
+      quantityUnit,
+      beneficiariesCount,
+      urgency,
+      requiredBy,
+      address,
+      location,
+      notes,
+    } = req.body;
+
+    if (!minQuantity || !maxQuantity) {
+      return res.status(400).json({
+        message: 'Please provide both minimum and maximum quantity in your range.',
+      });
+    }
+
+    if (Number(minQuantity) > Number(maxQuantity)) {
+      return res.status(400).json({
+        message: 'Minimum quantity cannot exceed maximum quantity.',
+      });
+    }
+
+    const deliveryAddress =
+      address?.trim() ||
+      location?.address?.trim() ||
+      req.user.location?.address ||
+      'Community Shelter Intake Facility';
+
+    // Calculate coordinates
+    let reqLat = location?.lat !== undefined ? Number(location.lat) : req.user.location?.lat;
+    let reqLng = location?.lng !== undefined ? Number(location.lng) : req.user.location?.lng;
+
+    if (reqLat === undefined || reqLng === undefined || isNaN(reqLat) || isNaN(reqLng)) {
+      const baseLat = 40.7128;
+      const baseLng = -74.0060;
+      const jitterLat = (Math.random() - 0.5) * 0.08;
+      const jitterLng = (Math.random() - 0.5) * 0.08;
+      reqLat = Number((baseLat + jitterLat).toFixed(5));
+      reqLng = Number((baseLng + jitterLng).toFixed(5));
+    }
+
+    const foodRequest = await FoodRequest.create({
+      rescuer: req.user._id,
+      shelterName: shelterName?.trim() || req.user.name || 'Community Shelter',
+      foodTypes: Array.isArray(foodTypes) && foodTypes.length > 0 ? foodTypes : ['cooked_meals', 'produce'],
+      minQuantity: Number(minQuantity),
+      maxQuantity: Number(maxQuantity),
+      quantityUnit: quantityUnit || 'meals',
+      beneficiariesCount: Number(beneficiariesCount) || 0,
+      urgency: urgency || 'standard',
+      requiredBy: requiredBy ? new Date(requiredBy) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+      address: deliveryAddress,
+      location: {
+        lat: reqLat,
+        lng: reqLng,
+        address: deliveryAddress,
+      },
+      notes: notes?.trim() || '',
+      status: 'pending',
+    });
+
+    const populatedRequest = await FoodRequest.findById(foodRequest._id).populate(
+      'rescuer',
+      'name email phone location availableCapacity'
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Food request submitted successfully! Admin has been notified and plotted on the map.',
+      foodRequest: populatedRequest,
+    });
+  } catch (error) {
+    console.error('Error creating food request:', error);
+    res.status(500).json({
+      message: error.message || 'Server error submitting food request.',
+    });
+  }
+};
+
+/**
+ * @desc    Get all food requests created by the logged-in rescuer
+ * @route   GET /api/rescuer/my-food-requests
+ * @access  Private (Rescuer only)
+ */
+const getMyFoodRequests = async (req, res) => {
+  try {
+    const requests = await FoodRequest.find({ rescuer: req.user._id })
+      .populate('matchedDonation')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: requests.length,
+      requests,
+    });
+  } catch (error) {
+    console.error('Error fetching rescuer food requests:', error);
+    res.status(500).json({
+      message: error.message || 'Server error fetching your food requests.',
+    });
+  }
+};
+
+/**
+ * @desc    Cancel a pending food request
+ * @route   DELETE /api/rescuer/food-requests/:id
+ * @access  Private (Rescuer only)
+ */
+const cancelFoodRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await FoodRequest.findOne({
+      _id: id,
+      rescuer: req.user._id,
+    });
+
+    if (!request) {
+      return res.status(404).json({
+        message: 'Food request not found or unauthorized.',
+      });
+    }
+
+    if (request.status === 'fulfilled') {
+      return res.status(400).json({
+        message: 'Cannot cancel a fulfilled request.',
+      });
+    }
+
+    request.status = 'cancelled';
+    await request.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Food request has been cancelled.',
+      request,
+    });
+  } catch (error) {
+    console.error('Error cancelling food request:', error);
+    res.status(500).json({
+      message: error.message || 'Server error cancelling food request.',
+    });
+  }
+};
+
 module.exports = {
   updateProfile,
   getRescuerMatches,
   respondToMatch,
+  createFoodRequest,
+  getMyFoodRequests,
+  cancelFoodRequest,
 };

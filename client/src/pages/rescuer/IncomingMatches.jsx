@@ -1,34 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { ListSkeleton } from '../../components/Skeleton';
 
-const IncomingMatches = ({ onMatchConfirmed }) => {
+const IncomingMatches = ({ onMatchConfirmed, onMatchesUpdated }) => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/api/rescuer/matches');
       const allMatches = response.data?.matches || [];
-      // Only keep matches waiting for rescuer confirmation
       const pending = allMatches.filter((m) => m.status === 'pending_confirmation');
       setMatches(pending);
+      if (onMatchesUpdated) onMatchesUpdated();
     } catch (err) {
       console.error('Error fetching incoming matches:', err);
-      setMessage({
-        type: 'error',
-        text: err.response?.data?.message || err.message || 'Failed to fetch matches.',
-      });
+      const msg = err.response?.data?.message || err.message || 'Failed to fetch incoming matches.';
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  };
+  }, [onMatchesUpdated]);
 
   useEffect(() => {
     fetchMatches();
-  }, []);
+  }, [fetchMatches]);
 
   const handleRespond = async (matchId, action) => {
     setActionLoadingId(matchId);
@@ -40,39 +41,46 @@ const IncomingMatches = ({ onMatchConfirmed }) => {
       });
 
       if (action === 'confirm') {
+        const successMsg = 'Match confirmed! OTPs generated. Go to Active Pickup to coordinate transfer.';
         setMessage({
           type: 'success',
-          text: 'Match confirmed! OTPs have been generated. Go to Active Pickup to coordinate handoff.',
+          text: successMsg,
         });
+        toast.success(successMsg);
 
-        // Remove from pending list
         setMatches((prev) => prev.filter((m) => m._id !== matchId));
 
         if (onMatchConfirmed) {
           onMatchConfirmed(response.data?.match);
         }
       } else {
+        const infoMsg = 'Match declined. Donation reassigned to another available volunteer.';
         setMessage({
           type: 'info',
-          text: 'Match declined. The donation has been reassigned to another available volunteer.',
+          text: infoMsg,
         });
+        toast('Match declined and returned to matching pool.', { icon: 'ℹ️' });
         setMatches((prev) => prev.filter((m) => m._id !== matchId));
+        if (onMatchesUpdated) onMatchesUpdated();
       }
     } catch (err) {
       console.error('Error responding to match:', err);
+      const msg = err.response?.data?.message || err.message || `Failed to ${action} match.`;
       setMessage({
         type: 'error',
-        text: err.response?.data?.message || err.message || `Failed to ${action} match.`,
+        text: msg,
       });
+      toast.error(msg);
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return 'Not specified';
     try {
-      return new Date(dateStr).toLocaleString(undefined, {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -84,29 +92,38 @@ const IncomingMatches = ({ onMatchConfirmed }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-6 sm:p-8">
+    <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5 sm:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-stone-100">
         <div>
-          <h2 className="text-xl font-bold text-[#1F2937]">Incoming Match Assignments</h2>
-          <p className="text-sm text-stone-600 mt-0.5">
-            Review surplus food opportunities matched to your vehicle capacity and area.
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold text-[#1F2937]">Incoming Match Assignments</h2>
+            {matches.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E8F5EE] text-[#1F7A4D]">
+                {matches.length} pending
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-stone-600 mt-1">
+            Review surplus food opportunities matched to your shelter's dietary criteria, intake hours, and capacity.
           </p>
         </div>
 
         <button
+          type="button"
           onClick={fetchMatches}
           disabled={loading}
-          className="px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-700 hover:bg-stone-50 transition-colors self-start sm:self-auto"
+          className="px-4 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors self-start sm:self-auto flex items-center gap-1.5 shadow-xs"
         >
-          {loading ? 'Refreshing...' : 'Refresh Matches'}
+          <span>🔄</span>
+          <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
         </button>
       </div>
 
       {/* Alerts */}
       {message.text && (
         <div
-          className={`mb-6 p-4 rounded-xl text-sm font-medium flex items-center justify-between ${
+          className={`mb-6 p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between ${
             message.type === 'success'
               ? 'bg-[#E8F5EE] border border-[#1F7A4D]/30 text-[#1F7A4D]'
               : message.type === 'error'
@@ -114,8 +131,13 @@ const IncomingMatches = ({ onMatchConfirmed }) => {
               : 'bg-stone-100 border border-stone-200 text-stone-700'
           }`}
         >
-          <span>{message.text}</span>
+          <div className="flex items-center gap-2">
+            <span>{message.type === 'success' ? '✓' : message.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+            <span>{message.text}</span>
+          </div>
+
           <button
+            type="button"
             onClick={() => setMessage({ type: '', text: '' })}
             className="text-stone-400 hover:text-stone-600 text-xs font-bold px-2 py-1"
           >
@@ -124,21 +146,19 @@ const IncomingMatches = ({ onMatchConfirmed }) => {
         </div>
       )}
 
-      {/* List */}
+      {/* Match List */}
       {loading ? (
-        <div className="py-16 text-center text-sm text-stone-500">
-          Checking for incoming matches...
-        </div>
+        <ListSkeleton items={3} />
       ) : matches.length === 0 ? (
         <div className="py-16 text-center">
-          <div className="w-12 h-12 rounded-full bg-[#E8F5EE] text-[#1F7A4D] flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+          <div className="w-14 h-14 rounded-full bg-[#E8F5EE] text-[#1F7A4D] flex items-center justify-center mx-auto mb-4 font-bold text-2xl shadow-xs">
             ✓
           </div>
-          <p className="text-base font-bold text-[#1F2937] mb-1">
-            No pending matches
-          </p>
-          <p className="text-xs text-stone-500 max-w-sm mx-auto">
-            You have no pending rescue requests right now. New matches will appear automatically when nearby donors post surplus food.
+          <h3 className="text-base font-bold text-[#1F2937] mb-1">
+            No Pending Matches Right Now
+          </h3>
+          <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+            You're all caught up! As soon as food donors in your radius post fresh surplus, our automated matching engine will dispatch opportunities directly here.
           </p>
         </div>
       ) : (
@@ -151,67 +171,96 @@ const IncomingMatches = ({ onMatchConfirmed }) => {
             return (
               <div
                 key={match._id}
-                className="p-6 rounded-xl border border-stone-200/80 hover:border-stone-300 transition-colors bg-white flex flex-col md:flex-row md:items-center justify-between gap-6"
+                className="p-5 sm:p-6 rounded-2xl border border-stone-200/80 hover:border-stone-300 transition-all bg-white hover:shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5"
               >
                 {/* Details */}
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-bold text-base text-[#1F2937] capitalize">
-                      {donation.foodType?.replace('_', ' ') || 'Food batch'}
+                <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm sm:text-base text-[#1F2937] capitalize">
+                      {donation.foodType?.replace(/_/g, ' ') || 'Surplus Food'}
                     </span>
-                    <span className="text-xs font-bold text-[#1F7A4D] bg-[#E8F5EE] px-2.5 py-0.5 rounded-full">
-                      {donation.quantity} units / meals
+
+                    <span className="text-xs font-bold text-[#1F7A4D] bg-[#E8F5EE] px-2.5 py-0.5 rounded-full border border-[#1F7A4D]/20">
+                      📦 {donation.quantity} units / meals
                     </span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-medium">
-                      Action Required
+
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">
+                      ⚡ Action Required
                     </span>
+
+                    {match.confidence && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium capitalize">
+                        ML Confidence: {match.confidence}
+                      </span>
+                    )}
                   </div>
 
                   {donation.description && (
-                    <p className="text-sm text-stone-600 line-clamp-2">
-                      {donation.description}
+                    <p className="text-xs sm:text-sm text-stone-600 leading-relaxed bg-[#FAF9F6] p-3 rounded-xl border border-stone-100">
+                      "{donation.description}"
                     </p>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-stone-500 pt-1">
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs text-stone-600 pt-1">
                     <div>
-                      <strong className="text-stone-700">Donor:</strong> {donor.name || 'Anonymous donor'}
-                      {donor.phone && ` (${donor.phone})`}
+                      <span className="text-stone-400 font-medium block">Donor</span>
+                      <strong className="text-stone-800 text-xs sm:text-sm">
+                        {donor.name || 'Community Donor'}
+                      </strong>
+                      {donor.phone && (
+                        <span className="text-stone-500 block">{donor.phone}</span>
+                      )}
                     </div>
+
                     <div>
-                      <strong className="text-stone-700">Pickup Location:</strong>{' '}
-                      {donation.location?.address || 'Provided upon confirmation'}
+                      <span className="text-stone-400 font-medium block">Pickup Location</span>
+                      <strong className="text-stone-800 text-xs sm:text-sm block">
+                        {donation.location?.address || 'Address released upon match confirmation'}
+                      </strong>
                     </div>
+
                     <div>
-                      <strong className="text-stone-700">Must Pick Up By:</strong>{' '}
-                      <span className="text-red-600 font-medium">
-                        {formatDate(donation.expiryAt)}
+                      <span className="text-stone-400 font-medium block">Pickup Deadline</span>
+                      <span className="font-semibold text-red-600">
+                        ⏰ {formatDate(donation.expiryAt)}
                       </span>
                     </div>
+
                     <div>
-                      <strong className="text-stone-700">Match Confidence:</strong>{' '}
-                      <span className="capitalize">{match.confidence || 'standard'}</span>
-                      {match.matchScore ? ` (${match.matchScore} pts)` : ''}
+                      <span className="text-stone-400 font-medium block">Transport Route</span>
+                      <span className="font-semibold text-[#1F7A4D]">
+                        ✓ Within vehicle capacity & operational radius
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Confirm & Reject Buttons */}
-                <div className="flex flex-row md:flex-col items-center gap-2.5 flex-shrink-0">
+                {/* Confirm / Reject Buttons */}
+                <div className="flex flex-row lg:flex-col items-center gap-2.5 flex-shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-stone-100">
                   <button
+                    type="button"
                     onClick={() => handleRespond(match._id, 'confirm')}
                     disabled={isProcessing}
-                    className="flex-1 md:flex-none w-full md:w-36 py-2.5 px-4 rounded-xl bg-[#1F7A4D] hover:bg-[#18643e] text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    className="flex-1 lg:flex-none w-full lg:w-40 py-3 px-4 rounded-xl bg-[#1F7A4D] hover:bg-[#18643e] text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                   >
-                    {isProcessing ? 'Processing...' : 'Confirm Rescue'}
+                    {isProcessing ? (
+                      <span>Accepting...</span>
+                    ) : (
+                      <>
+                        <span>✓</span>
+                        <span>Accept for Shelter</span>
+                      </>
+                    )}
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => handleRespond(match._id, 'reject')}
                     disabled={isProcessing}
-                    className="flex-1 md:flex-none w-full md:w-36 py-2.5 px-4 rounded-xl border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 lg:flex-none w-full lg:w-40 py-2.5 px-4 rounded-xl border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-center"
                   >
-                    Decline
+                    Decline Batch
                   </button>
                 </div>
               </div>

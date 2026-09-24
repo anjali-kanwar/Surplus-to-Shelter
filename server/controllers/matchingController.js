@@ -11,7 +11,7 @@ const Match = require('../models/Match');
  */
 const computePickupWindowMinutes = (startTimeStr, endTimeStr) => {
   if (!startTimeStr || !endTimeStr) {
-    return 120; // default 2 hours window if not specified
+    return 180; // default 3 hours window if not specified
   }
 
   try {
@@ -24,18 +24,20 @@ const computePickupWindowMinutes = (startTimeStr, endTimeStr) => {
     const startMinutes = (startH || 0) * 60 + (startM || 0);
     const endMinutes = (endH || 0) * 60 + (endM || 0);
 
+    const windowDuration = Math.max(60, endMinutes - startMinutes);
+
     if (currentMinutes < startMinutes) {
       // Window hasn't started yet today, remaining duration is full window
-      return Math.max(0, endMinutes - startMinutes);
+      return windowDuration;
     } else if (currentMinutes <= endMinutes) {
       // Inside window, remaining minutes until end
-      return Math.max(0, endMinutes - currentMinutes);
+      return Math.max(30, endMinutes - currentMinutes);
     } else {
-      // Window already closed today
-      return 0;
+      // Window closed for today, available for next window cycle
+      return windowDuration;
     }
   } catch (err) {
-    return 120;
+    return 180;
   }
 };
 
@@ -109,7 +111,7 @@ const triggerMatching = async (donationId) => {
       })),
     };
 
-    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:5001';
 
     let mlResponseData;
     try {

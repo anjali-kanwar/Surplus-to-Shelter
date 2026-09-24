@@ -21,7 +21,10 @@ const registerUser = async (req, res) => {
       password,
       role,
       phone,
+      address,
+      city,
       location,
+      organizationType,
       acceptedTypes,
       availableCapacity,
       acceptRadiusKm,
@@ -50,6 +53,22 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Determine location coords
+    let userLat = location?.lat;
+    let userLng = location?.lng;
+    const userAddress = address || location?.address || (role === 'rescuer' ? 'Community Shelter Base Station' : 'Donor Facility');
+    const userCity = city || location?.city || 'Metro City';
+
+    // If coordinates not supplied, provide slight random offset around metro center so each shelter/donor shows distinct on map
+    if (userLat === undefined || userLng === undefined || isNaN(userLat) || isNaN(userLng)) {
+      const baseLat = 40.7128;
+      const baseLng = -74.0060;
+      const randomOffsetLat = (Math.random() - 0.5) * 0.08;
+      const randomOffsetLng = (Math.random() - 0.5) * 0.08;
+      userLat = Number((baseLat + randomOffsetLat).toFixed(5));
+      userLng = Number((baseLng + randomOffsetLng).toFixed(5));
+    }
+
     // Prepare user data
     const userData = {
       name: name.trim(),
@@ -57,7 +76,13 @@ const registerUser = async (req, res) => {
       password,
       role,
       phone,
-      location,
+      organizationType: organizationType || (role === 'rescuer' ? 'shelter' : 'business'),
+      location: {
+        lat: userLat,
+        lng: userLng,
+        address: userAddress,
+        city: userCity,
+      },
     };
 
     if (role === 'rescuer') {
@@ -83,6 +108,7 @@ const registerUser = async (req, res) => {
         role: user.role,
         phone: user.phone,
         location: user.location,
+        organizationType: user.organizationType,
         ...(user.role === 'rescuer' && {
           acceptedTypes: user.acceptedTypes,
           availableCapacity: user.availableCapacity,

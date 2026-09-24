@@ -44,6 +44,9 @@ const donationSchema = new mongoose.Schema(
       enum: ['posted', 'matched', 'pickup_confirmed', 'delivered', 'expired'],
       default: 'posted',
     },
+    visionAnalysis: {
+      type: mongoose.Schema.Types.Mixed,
+    },
   },
   {
     timestamps: true,

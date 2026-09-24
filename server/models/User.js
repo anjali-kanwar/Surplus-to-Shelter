@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['donor', 'rescuer'],
+      enum: ['donor', 'rescuer', 'admin'],
       required: [true, 'Please specify a role'],
     },
     phone: {
@@ -35,6 +35,18 @@ const userSchema = new mongoose.Schema(
       lng: {
         type: Number,
       },
+      address: {
+        type: String,
+        trim: true,
+      },
+      city: {
+        type: String,
+        trim: true,
+      },
+    },
+    organizationType: {
+      type: String,
+      trim: true,
     },
     // Rescuer-only fields (optional / undefined for donors)
     acceptedTypes: {

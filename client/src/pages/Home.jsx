@@ -72,7 +72,7 @@ const Home = () => {
           </h1>
 
           <p className="text-lg sm:text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-10">
-            Connect food donors, volunteer rescuers, and community shelters in real-time. Safe, verified, and direct.
+            Connect food donors, community shelters & food rescue organizations with seamless parcel dispatch. Safe, verified, and direct.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -80,13 +80,13 @@ const Home = () => {
               to="/signup?role=donor"
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#1F7A4D] text-white font-medium hover:bg-[#18643e] transition-colors shadow-sm"
             >
-              Sign Up as Donor
+              Sign Up as Food Donor
             </Link>
             <Link
               to="/signup?role=rescuer"
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-stone-300 text-[#1F2937] font-medium hover:bg-stone-50 transition-colors shadow-sm"
             >
-              Volunteer as Rescuer
+              Register as Shelter / Rescuer
             </Link>
           </div>
         </section>
@@ -98,7 +98,7 @@ const Home = () => {
               How It Works
             </h2>
             <p className="text-stone-600 text-sm sm:text-base">
-              A streamlined, three-step journey ensuring excess food feeds people, not landfills.
+              A streamlined, three-step journey connecting surplus food providers directly with community shelters.
             </p>
           </div>
 
@@ -113,11 +113,11 @@ const Home = () => {
                   Donors Post Surplus
                 </h3>
                 <p className="text-stone-600 text-sm leading-relaxed">
-                  Restaurants, caterers, and grocery stores post surplus food details, quantity, pickup windows, and location in seconds.
+                  Restaurants, caterers, and grocery stores post surplus food details, portions, expiry windows, and pickup location in seconds.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Instant posting • Expiry tracking
+                Instant posting • AI vision inspection
               </div>
             </div>
 
@@ -128,14 +128,14 @@ const Home = () => {
                   02
                 </div>
                 <h3 className="text-lg font-semibold text-[#1F2937] mb-2">
-                  Smart Match & Dispatch
+                  Smart Match & Parcel Dispatch
                 </h3>
                 <p className="text-stone-600 text-sm leading-relaxed">
-                  Our system matches donations with certified nearby volunteers based on route, vehicle capacity, and pickup window.
+                  Our system matches donations with shelters based on capacity and dietary preferences. Admin coordinates courier pickup manifests directly with parcel partners.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Radius filtering • Capacity matching
+                Capacity matching • Courier dispatch
               </div>
             </div>
 
@@ -146,14 +146,14 @@ const Home = () => {
                   03
                 </div>
                 <h3 className="text-lg font-semibold text-[#1F2937] mb-2">
-                  Verified OTP Delivery
+                  Shelter Intake & Verified OTP
                 </h3>
                 <p className="text-stone-600 text-sm leading-relaxed">
-                  Rescuers securely pick up and hand off meals using dual 6-digit OTP codes, verifying chain of custody for food safety.
+                  Shelters receive deliveries and confirm arrival using secure dual 6-digit OTP verification, ensuring complete food safety traceability.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-stone-100 text-xs text-stone-500 font-medium">
-                Dual OTP security • Credit points awarded
+                Dual OTP security • Tax credit certificates
               </div>
             </div>
           </div>
@@ -170,7 +170,7 @@ const Home = () => {
                 Zero Waste, Maximum Community Good
               </h3>
               <p className="text-stone-600 text-sm leading-relaxed mb-6">
-                Prevent edible food from reaching landfills, earn community credit points, and get real-time confirmation when your meals reach local shelters.
+                Prevent edible food from reaching landfills, earn community credit points, and get official IRS 501(c)(3) tax write-off certificates.
               </p>
               <Link
                 to="/signup?role=donor"
@@ -182,19 +182,19 @@ const Home = () => {
 
             <div className="bg-white rounded-2xl p-8 border border-stone-200/70 shadow-sm">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#1F7A4D]">
-                For Rescuers & Shelters
+                For Shelters & Food Rescuers
               </span>
               <h3 className="text-xl font-bold text-[#1F2937] mt-2 mb-3">
-                Feed Families with Verified Handoffs
+                Reliable Surplus Supply for Your Shelter
               </h3>
               <p className="text-stone-600 text-sm leading-relaxed mb-6">
-                Join an active network of volunteer drivers and shelter coordinators. Accept assignments fitting your daily schedule and capacity.
+                Receive matched fresh meals directly at your facility tailored to your dietary guidelines, intake hours, and storage capacity.
               </p>
               <Link
                 to="/signup?role=rescuer"
                 className="text-sm font-semibold text-[#1F7A4D] hover:text-[#18643e] inline-flex items-center gap-1"
               >
-                Register as a Rescuer &rarr;
+                Register as a Rescuer (Shelter) &rarr;
               </Link>
             </div>
           </div>

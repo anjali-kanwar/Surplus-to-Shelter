@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { getToken, decodeToken, logout, getRoleHomeRoute } from '../utils/auth';
 
 /**
@@ -25,13 +26,14 @@ const ProtectedRoute = ({ requiredRole, role, allowedRoles, children }) => {
   // If token decoding fails or token is expired
   if (!decoded || (decoded.exp && Date.now() >= decoded.exp * 1000)) {
     logout();
+    toast.error('Your session has expired. Please log in again.');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   const userRole = decoded.role;
   const targetRoles = allowedRoles || (requiredRole ? [requiredRole] : role ? [role] : []);
 
-  // If role does not match required role, redirect to authorized dashboard
+  // If role does not match required role, safely redirect to authorized dashboard
   if (targetRoles.length > 0 && !targetRoles.includes(userRole)) {
     const fallbackRoute = getRoleHomeRoute(userRole);
     return <Navigate to={fallbackRoute} replace />;
