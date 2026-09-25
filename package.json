@@ -4,10 +4,17 @@
   "description": "AI-Powered Food Rescue & Redistribution Platform",
   "private": true,
   "scripts": {
-    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n \"SERVER,CLIENT,ML\" -c \"blue.bold,cyan.bold,green.bold\" \"npm run server\" \"npm run client\" \"npm run ml\"",
+    "dev:all": "concurrently -n \"SERVER,CLIENT,ML\" -c \"blue.bold,cyan.bold,green.bold\" \"npm run server\" \"npm run client\" \"npm run ml\"",
+    "dev:app": "concurrently -n \"SERVER,CLIENT\" -c \"blue.bold,cyan.bold\" \"npm run server\" \"npm run client\"",
+    "install:all": "npm --prefix server install && npm --prefix client install && pip install -r ml-service/requirements.txt",
     "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install",
     "start": "npm --prefix server start",
     "server": "npm --prefix server run dev",
-    "client": "npm --prefix client run dev"
+    "client": "npm --prefix client run dev",
+    "ml": "python ml-service/app.py"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }

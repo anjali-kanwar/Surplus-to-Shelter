@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from matching_engine import rank_candidates, DEFAULT_WEIGHTS
 from vision_analyzer import analyze_food_image
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
 CORS(app)
