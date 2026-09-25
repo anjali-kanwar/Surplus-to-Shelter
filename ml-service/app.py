@@ -80,4 +80,13 @@ def analyze_food():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=PORT, debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() in ("true", "1", "yes")
+    print(f"Starting ML Microservice on port {PORT}...")
+    try:
+        app.run(host="0.0.0.0", port=PORT, debug=debug_mode, use_reloader=False)
+    except OSError as e:
+        if "10048" in str(e) or "already in use" in str(e).lower():
+            print(f"[ML Service] Port {PORT} is already in use by another instance.")
+        else:
+            raise e
+
